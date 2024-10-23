@@ -4,6 +4,7 @@ const schema = mongoose.Schema(
     {
         "name": { type: String, },
         "email": { type: String,},
+        "profile_pic": { type: String,},
         "password": { type: String, },
         "role": { type: String, },
         "lab_licence_number": { type: String, },
