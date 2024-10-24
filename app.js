@@ -7,10 +7,12 @@ const jwt = require("jsonwebtoken")
 
 const multer = require('multer');
 const path = require('path');
+const bodyParser = require('body-parser');
 
 const { usermodel } = require("./models/Users")
 const { ordermodel } = require("./models/Orders")
 const { productmodel }=require("./models/Products")
+const {  pricemodel }=require("./models/Productprice")
 
 const app = express()
 app.use(cors())
@@ -94,6 +96,85 @@ app.post("/login", (req, res) => {
     )
 })
 
+//Endpoint to fetch user details
+// Endpoint to fetch user details
+app.post('/userDetailsView', async (req, res) => {
+    const userId = req.body.userId;
+    try {
+        const user = await usermodel.findById(userId);
+        if (!user) {
+            return res.status(404).send({ message: 'User  not found' });
+        }
+        res.send(user);
+    } catch (error) {
+        console.error("Error fetching user details:", error.message);
+        res.status(500).send({ message: 'Internal Server Error', error: error.message });
+    }
+});
+
+// Endpoint to update user profile
+app.put('/updateProfile/:userId', async (req, res) => {
+    const userId = req.params.userId;
+    try {
+        const user = await usermodel.findByIdAndUpdate(userId, req.body, { new: true });
+        if (!user) {
+            return res.status(404).send({ message: 'User  not found' });
+        }
+        res.send({ message: 'Profile updated successfully', user });
+    } catch (error) {
+        console.error("Error updating profile:", error.message);
+        res.status(500).send({ message: 'Internal Server Error', error: error.message });
+    }
+});
+
+app.post("/doctors", (req, res) => {
+    usermodel.find({ role: 'Doctor' }) // Filter to find users with role 'doctor'
+        .then((data) => {
+            res.json(data); // Send the filtered data as a JSON response
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error.message }); // Send error message with status code 500
+        });
+});
+
+app.post("/technicians", (req, res) => {
+    usermodel.find({ role: 'Technician' }) // Filter to find users with role 'technician'
+        .then((data) => {
+            res.json(data); // Send the filtered data as a JSON response
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error.message }); // Send error message with status code 500
+        });
+});
+
+app.post("/deleteUser", (req, res) => {
+    let input = req.body; // Get the input from the request body
+
+    // Use findByIdAndDelete to remove the doctor by ID
+    usermodel.findByIdAndDelete(input._id)
+        .then((response) => {
+            if (response) {
+                res.json({ "status": "deleted" }); // Respond with a success message
+            } else {
+                res.status(404).json({ "status": "not found" }); // Handle case where ID does not exist
+            }
+        })
+        .catch((error) => {
+            res.status(500).json({ "error": error.message }); // Send error message with status code 500
+        });
+});
+
+
+app.get("/getTechnicians", (req, res) => {
+    usermodel.find({ role: 'Technician' }) // Filter to find users with role 'Technician'
+        .then((data) => {
+            res.json(data); // Send the filtered data as a JSON response
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error.message }); // Send error message with status code 500
+        });
+});
+
 //Profile Api
 // app.post("/Profile", async (req, res) => {
 
@@ -164,17 +245,6 @@ app.post("/deleteOrder", (req, res) => {
     });
 });
 
-
-app.get('/getTechnicians', async (req, res) => {
-    try {
-        const technicians = await usermodel.find();
-        res.json(technicians);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching technicians' });
-    }
-});
-
 // Endpoint to assign technician
 app.post('/assignTechnician', async (req, res) => {
     try {
@@ -191,16 +261,28 @@ app.post('/assignTechnician', async (req, res) => {
     }
 });
 
+// app.get('/getTechnicians', async (req, res) => {
+//     try {
+//         const technicians = await usermodel.find();
+//         res.json(technicians);
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ message: 'Error fetching technicians' });
+//     }
+// });
 
-app.post('/viewAssignedOrders', async (req, res) => {
-    try {
-        const { technicianId } = req.body;
-        const assignedOrders = await ordermodel.find({ technicianId }); // Assuming your Order model has a technicianId field
-        res.json(assignedOrders);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching assigned orders' });
-    }
+
+
+
+app.post("/viewAssignedOrders", (req, res) => {
+    const technicianId = req.body.technicianId;
+    ordermodel.find({ assignedTechnician: technicianId }) // Assuming you have a field 'assignedTechnician' in your order model
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error.message });
+        });
 });
 
 //add product by user
@@ -282,6 +364,99 @@ app.post('/updateProfile', upload.single('profile_pic'), async (req, res) => {
         res.status(500).json({ message: 'Error updating profile' });
     }
 });
+
+
+// Update order status
+app.post('/updateOrderStatus', async (req, res) => {
+    const { orderId, status } = req.body;
+    try {
+        const order = await ordermodel.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found' });
+        }
+
+        // Update the order status
+        order.status = status;
+        await order.save();
+
+        res.json({ status: 'updated', order });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating order status' });
+    }
+});
+
+app.post("/searchOrder", (req, res) => {
+    let input = req.body; // This should contain the doctor's name or ID
+    ordermodel.find(input).then((data) => {
+        res.json(data);
+    }).catch((error) => {
+        console.error(error);
+        res.status(500).send("Error fetching orders");
+    });
+});
+
+app.put("/updateTechnicianAssignment/:id", (req, res) => {
+    const technicianId = req.params.id; // Get technician ID from URL parameters
+    const { assignedOrders } = req.body; // Get new assigned orders from request body
+
+    // Validate input
+    if (!assignedOrders) {
+        return res.status(400).json({ error: "Assigned orders are required" });
+    }
+
+    usermodel.findByIdAndUpdate(technicianId, { assignedOrders }, { new: true }) // Update the user model
+        .then((updatedUser ) => {
+            if (!updatedUser ) {
+                return res.status(404).json({ error: "Technician not found" });
+            }
+            res.json(updatedUser ); // Send the updated user as a JSON response
+        })
+        .catch((error) => {
+            res.status(500).json({ error: error.message }); // Handle errors
+        });
+});
+
+app.post("/addPrice", (req, res) => {
+    let input = req.body
+    let price = new pricemodel(input)
+    price.save()
+    res.json({"status":"added"})
+})
+
+
+app.post("/viewPrice", (req, res) => {
+
+    pricemodel.find().then(
+
+        (data) => {
+            res.json(data)
+        }
+    ).catch(
+        (error) => {
+            res.json(error)
+        }
+    )
+
+})
+
+app.post("/deletePrice", (req, res) => {
+
+    let input = req.body
+    pricemodel.findByIdAndDelete(input._id).then(
+
+        (response) => {
+            res.json({"status":"deleted"})
+         }
+
+    ).catch(
+        (error)=>{
+            res.send("error")
+        }
+    )
+})
+
+
 
 
 

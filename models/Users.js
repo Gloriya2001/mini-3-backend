@@ -4,7 +4,7 @@ const schema = mongoose.Schema(
     {
         "name": { type: String, },
         "email": { type: String,},
-        "profile_pic": { type: String,},
+        "profile_picture": { type: String,},
         "password": { type: String, },
         "role": { type: String, },
         "lab_licence_number": { type: String, },
@@ -14,7 +14,9 @@ const schema = mongoose.Schema(
         "phone_number": { type: String, },
         "alternate_phone_number": { type: String, },
         "clinic_name": { type: String, },
-        "lab_name": { type: String, }    
+        "lab_name": { type: String, } ,
+        "asign": { type: String, } ,
+
     }
 )
 let usermodel = mongoose.model("users", schema)
