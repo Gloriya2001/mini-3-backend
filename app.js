@@ -367,24 +367,6 @@ app.post('/updateProfile', upload.single('profile_pic'), async (req, res) => {
 
 
 // Update order status
-app.post('/updateOrderStatus', async (req, res) => {
-    const { orderId, status } = req.body;
-    try {
-        const order = await ordermodel.findById(orderId);
-        if (!order) {
-            return res.status(404).json({ message: 'Order not found' });
-        }
-
-        // Update the order status
-        order.status = status;
-        await order.save();
-
-        res.json({ status: 'updated', order });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error updating order status' });
-    }
-});
 
 app.post("/searchOrder", (req, res) => {
     let input = req.body; // This should contain the doctor's name or ID
@@ -396,26 +378,11 @@ app.post("/searchOrder", (req, res) => {
     });
 });
 
-app.put("/updateTechnicianAssignment/:id", (req, res) => {
-    const technicianId = req.params.id; // Get technician ID from URL parameters
-    const { assignedOrders } = req.body; // Get new assigned orders from request body
 
-    // Validate input
-    if (!assignedOrders) {
-        return res.status(400).json({ error: "Assigned orders are required" });
-    }
 
-    usermodel.findByIdAndUpdate(technicianId, { assignedOrders }, { new: true }) // Update the user model
-        .then((updatedUser ) => {
-            if (!updatedUser ) {
-                return res.status(404).json({ error: "Technician not found" });
-            }
-            res.json(updatedUser ); // Send the updated user as a JSON response
-        })
-        .catch((error) => {
-            res.status(500).json({ error: error.message }); // Handle errors
-        });
-});
+
+
+//Price details
 
 app.post("/addPrice", (req, res) => {
     let input = req.body
@@ -456,9 +423,104 @@ app.post("/deletePrice", (req, res) => {
     )
 })
 
+/////Update Order Status
+app.put('/updateOrder/:id', (req, res) => {
+    const orderId = req.params.id; // Get the order ID from the URL parameters
+    const updatedData = req.body; // Get the updated data from the request body
+
+    ordermodel.updateOne({ _id: orderId }, updatedData) // Specify the order to update by ID
+        .then(result => {
+            if (result.nModified === 0) {
+                return res.status(404).json({ message: 'Order not found or no changes made' });
+            }
+            res.json({ message: 'Order updated successfully' });
+        })
+        .catch(error => {
+            console.error(error);
+            res.status(500).json({ message: 'Error updating order', error });
+        });
+});
 
 
 
+
+
+
+///Order Tracking
+app.post("/viewOrders", (req, res) => {
+
+    ordermodel.find().then(
+
+        (data) => {
+            res.json(data)
+        }
+    ).catch(
+        (error) => {
+            res.json(error)
+        }
+    )
+
+})
+
+app.post("/pending", (req, res) => {
+    ordermodel.find({ order_status: "pending" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
+
+app.post("/placed", (req, res) => {
+    ordermodel.find({ order_status: "placed" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
+
+app.post("/inProgress", (req, res) => {
+    ordermodel.find({ order_status: "in_progress" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
+
+app.post("/delivered", (req, res) => {
+    ordermodel.find({ order_status: "delivered" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
+
+app.post("/cancelled", (req, res) => {
+    ordermodel.find({ order_status: "in_progress" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
+
+app.post("/return", (req, res) => {
+    ordermodel.find({ order_status: "return" }) // Corrected syntax here
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            res.json(error);
+        });
+});
 
 app.listen(8080, () => {
 

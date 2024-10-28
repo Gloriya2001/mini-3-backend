@@ -3,6 +3,7 @@ const mongoose = require("mongoose")
 const schema = mongoose.Schema(
     {
         "doctor_name":{type:String},
+        "doctor_id":{ type: mongoose.Schema.Types.ObjectId, ref: 'User ', required: true, timestamps: true },
         "patient_name": { type: String, },
         "file_num": { type: String, },
         "date": { type: String, },
@@ -11,11 +12,11 @@ const schema = mongoose.Schema(
         "shade3": { type: String, },
         "category": { type: String, },
         "tooth_detail": { type: String, },
-        "tooth_count": { type: Number, },
+        "units": { type: Number, },
         "order_count": { type: String, },
         "oral_scan": { type: String, },
         "Remarks": { type: String, },
-        "technician_id": { type: String, },
+        "assigned_technician": { type: String, },
         "product": { type: String, },
         "price": { type: Number, },
         "total_price": { type: Number, },
