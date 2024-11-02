@@ -11,8 +11,10 @@ const bodyParser = require('body-parser');
 
 const { usermodel } = require("./models/Users")
 const { ordermodel } = require("./models/Orders")
-const { productmodel }=require("./models/Products")
-const {  pricemodel }=require("./models/Productprice")
+const { productmodel } = require("./models/Products")
+const { pricemodel } = require("./models/Productprice")
+const { msgmodel } = require("./models/Messeges")
+const { statusmodel } = require("./models/Status")
 
 const app = express()
 app.use(cors())
@@ -61,10 +63,6 @@ app.post("/signup", async (req, res) => {
     res.json({ "status": "success" })
 
 })
-
-
-
-
 //api for sign In
 app.post("/login", (req, res) => {
 
@@ -95,6 +93,11 @@ app.post("/login", (req, res) => {
         }
     )
 })
+
+
+
+
+
 
 //Endpoint to fetch user details
 // Endpoint to fetch user details
@@ -136,7 +139,7 @@ app.post("/doctors", (req, res) => {
             res.status(500).json({ error: error.message }); // Send error message with status code 500
         });
 });
-
+//to take technicians only
 app.post("/technicians", (req, res) => {
     usermodel.find({ role: 'Technician' }) // Filter to find users with role 'technician'
         .then((data) => {
@@ -165,25 +168,7 @@ app.post("/deleteUser", (req, res) => {
 });
 
 
-app.get("/getTechnicians", (req, res) => {
-    usermodel.find({ role: 'Technician' }) // Filter to find users with role 'Technician'
-        .then((data) => {
-            res.json(data); // Send the filtered data as a JSON response
-        })
-        .catch((error) => {
-            res.status(500).json({ error: error.message }); // Send error message with status code 500
-        });
-});
 
-//Profile Api
-// app.post("/Profile", async (req, res) => {
-
-//     let input = req.body
-//     let profile = await usermodel(input)
-//     profile.save()
-//     res.json({ "status": "added" })
-
-// })
 
 // Add order
 // Update the /addorder route to handle image uploads
@@ -204,11 +189,14 @@ app.post("/addorder", upload.single('oral_scan'), async (req, res) => {
 
         let orders = new ordermodel(orderData);
 
-        // Save the order to the database
-        await orders.save();
+        // Save the order to the database and capture the saved order
+        const savedOrder = await orders.save(); // Capture the saved order instance
 
-        // Return a success response
-        res.json({ "status": "added" });
+        // Return a success response with the order ID
+        res.json({
+            status: "added",
+            orderId: savedOrder._id // Include the order ID in the response
+        });
     } catch (error) {
         console.error("Error adding order:", error);
         res.status(500).json({ message: "Internal server error." });
@@ -216,18 +204,12 @@ app.post("/addorder", upload.single('oral_scan'), async (req, res) => {
 });
 
 
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Your existing route
-app.post("/viewOrders", (req, res) => {
-    ordermodel.find()
-        .then((data) => {
-            res.json(data);
-        })
-        .catch((error) => {
-            res.status(500).json({ message: "Error fetching orders", error });
-        });
-});
+
+
+
 
 //delete order by admin
 app.post("/deleteOrder", (req, res) => {
@@ -261,29 +243,13 @@ app.post('/assignTechnician', async (req, res) => {
     }
 });
 
-// app.get('/getTechnicians', async (req, res) => {
-//     try {
-//         const technicians = await usermodel.find();
-//         res.json(technicians);
-//     } catch (error) {
-//         console.error(error);
-//         res.status(500).json({ message: 'Error fetching technicians' });
-//     }
-// });
 
 
 
 
-app.post("/viewAssignedOrders", (req, res) => {
-    const technicianId = req.body.technicianId;
-    ordermodel.find({ assignedTechnician: technicianId }) // Assuming you have a field 'assignedTechnician' in your order model
-        .then((data) => {
-            res.json(data);
-        })
-        .catch((error) => {
-            res.status(500).json({ error: error.message });
-        });
-});
+
+
+
 
 //add product by user
 app.post("/addproduct", upload.single('product_img'), async (req, res) => {
@@ -314,13 +280,13 @@ app.post("/addproduct", upload.single('product_img'), async (req, res) => {
     }
 });
 
-app.post("/viewProduct",(req,res)=>{
+app.post("/viewProduct", (req, res) => {
     productmodel.find().then(
-        (data)=>{
+        (data) => {
             res.json(data)
         }
     ).catch(
-        (error)=>{
+        (error) => {
             res.json(error)
         }
     )
@@ -331,11 +297,11 @@ app.post("/deleteProduct", (req, res) => {
     productmodel.findByIdAndDelete(input._id).then(
 
         (response) => {
-            res.json({"status":"deleted"})
-         }
+            res.json({ "status": "deleted" })
+        }
 
     ).catch(
-        (error)=>{
+        (error) => {
             res.send("error")
         }
     )
@@ -388,7 +354,7 @@ app.post("/addPrice", (req, res) => {
     let input = req.body
     let price = new pricemodel(input)
     price.save()
-    res.json({"status":"added"})
+    res.json({ "status": "added" })
 })
 
 
@@ -407,63 +373,106 @@ app.post("/viewPrice", (req, res) => {
 
 })
 
+app.post("/viewPrice/:category", (req, res) => {
+    const category = req.params.category;  // Extract the category from the URL parameters
+
+    pricemodel.find({ category: category })  // Filter by the category
+        .then((data) => {
+            res.json(data);  // Send the filtered data
+        })
+        .catch((error) => {
+            console.error("Error fetching prices:", error);  // Log error for debugging
+            res.status(500).json({ message: 'Error fetching prices', error });
+        });
+});
+
+
+
 app.post("/deletePrice", (req, res) => {
 
     let input = req.body
     pricemodel.findByIdAndDelete(input._id).then(
 
         (response) => {
-            res.json({"status":"deleted"})
-         }
+            res.json({ "status": "deleted" })
+        }
 
     ).catch(
-        (error)=>{
+        (error) => {
             res.send("error")
         }
     )
 })
 
 /////Update Order Status
-app.put('/updateOrder/:id', (req, res) => {
-    const orderId = req.params.id; // Get the order ID from the URL parameters
-    const updatedData = req.body; // Get the updated data from the request body
 
-    ordermodel.updateOne({ _id: orderId }, updatedData) // Specify the order to update by ID
+app.put('/updateOrder/:id', (req, res) => {
+    console.log("Request Body:", req.body); // Log the request body
+
+    const orderId = req.params.id; // Get orderId from URL parameters
+    const { assigned_technician } = req.body; // Get assigned_technician from the request body
+
+    if (!orderId || !assigned_technician) {
+        return res.status(400).json({ message: 'Order ID and assigned technician are required.' });
+    }
+
+    ordermodel.updateOne({ _id: orderId }, { assigned_technician })
         .then(result => {
             if (result.nModified === 0) {
                 return res.status(404).json({ message: 'Order not found or no changes made' });
             }
-            res.json({ message: 'Order updated successfully' });
+            res.json({ status: 'updated' });
         })
         .catch(error => {
-            console.error(error);
+            console.error("Mongoose error:", error);
             res.status(500).json({ message: 'Error updating order', error });
         });
 });
 
 
+//View only new orders.
+app.post("/viewNewOrders", (req, res) => {
+    ordermodel.find({ assigned_technician: "" }) // Correctly query for assigned_technician
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
 
 
-
-
-///Order Tracking
 app.post("/viewOrders", (req, res) => {
+    ordermodel.find() // Correctly query for assigned_technician
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
 
-    ordermodel.find().then(
+app.post("/viewAssignedOrders", (req, res) => {
 
-        (data) => {
-            res.json(data)
-        }
-    ).catch(
-        (error) => {
-            res.json(error)
-        }
-    )
+    const name = req.body.name
 
-})
+    ordermodel.find({
+        assigned_technician: name,
+        order_status: "Assigned"
+    }) // Correctly query for assigned_technician
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
 
-app.post("/pending", (req, res) => {
-    ordermodel.find({ order_status: "pending" }) // Corrected syntax here
+app.post("/onlinePayed", (req, res) => {
+    ordermodel.find({ order_status: "Online Payment" }) // Corrected syntax here
         .then((data) => {
             res.json(data);
         })
@@ -472,18 +481,42 @@ app.post("/pending", (req, res) => {
         });
 });
 
-app.post("/placed", (req, res) => {
-    ordermodel.find({ order_status: "placed" }) // Corrected syntax here
+
+///Order Tracking
+
+
+app.post("/viewPending", (req, res) => {
+    ordermodel.find({
+        $or: [
+            { order_status: "Pending" },
+            { order_status: "Accepted" }
+        ]
+    })
         .then((data) => {
             res.json(data);
         })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
+
+app.post("/placed", (req, res) => {
+    ordermodel.find({
+        $or: [
+            { order_status: "Cash On Delivery" },
+            { order_status: "Online Payment" }
+        ]
+    }).then((data) => {
+        res.json(data);
+    })
         .catch((error) => {
             res.json(error);
         });
 });
 
 app.post("/inProgress", (req, res) => {
-    ordermodel.find({ order_status: "in_progress" }) // Corrected syntax here
+    ordermodel.find({ order_status: "In Progress" }) // Corrected syntax here
         .then((data) => {
             res.json(data);
         })
@@ -521,6 +554,117 @@ app.post("/return", (req, res) => {
             res.json(error);
         });
 });
+
+
+
+
+app.post("/techInProgress", (req, res) => {
+    const name = req.body.name;
+
+    // Correctly query for assigned_technician and order_status
+    ordermodel.find({
+        assigned_technician: name,
+        order_status: "In Progress"
+    })
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
+
+app.post("/techCompleted", (req, res) => {
+    const name = req.body.name;
+
+    // Correctly query for assigned_technician and order_status
+    ordermodel.find({
+        assigned_technician: name,
+        order_status: "Completed By Tech"
+    })
+        .then((data) => {
+            res.json(data);
+        })
+        .catch((error) => {
+            console.error("Error fetching orders:", error); // Log the error for debugging
+            res.status(500).json({ message: "Error fetching orders", error });
+        });
+});
+
+
+///Messages
+app.put('/orderStatus/:id', (req, res) => {
+    console.log("Request Body:", req.body); // Log the request body
+
+    const orderId = req.params.id; // Get orderId from URL parameters
+    const { status } = req.body; // Get status from the request body
+
+    if (!orderId || !status) {
+        return res.status(400).json({ message: 'Order ID and status are required.' });
+    }
+
+    ordermodel.updateOne({ _id: orderId }, { $set: { order_status: status } })
+        .then(result => {
+            if (result.nModified === 0) {
+                return res.status(404).json({ message: 'Order not found or no changes made' });
+            }
+            res.json({ status: 'updated' });
+        })
+        .catch(error => {
+            console.error("Mongoose error:", error);
+            res.status(500).json({ message: 'Error updating order', error });
+        });
+});
+
+app.put('/orderStatusPay/:id', (req, res) => {
+    console.log("Request Body:", req.body); // Log the request body
+
+    const { orderId } = req.body; // Get orderId from URL parameters
+    const { status } = req.body; // Get status from the request body
+
+    if (!orderId || !status) {
+        return res.status(400).json({ message: 'Order ID and status are required.' });
+    }
+
+    ordermodel.updateOne({ _id: orderId }, { $set: { order_status: status } })
+        .then(result => {
+            if (result.nModified === 0) {
+                return res.status(404).json({ message: 'Order not found or no changes made' });
+            }
+            res.json({ status: 'updated' });
+        })
+        .catch(error => {
+            console.error("Mongoose error:", error);
+            res.status(500).json({ message: 'Error updating order', error });
+        });
+});
+
+app.put('/orderStatusAdmin/:id', (req, res) => {
+    console.log("Request Body:", req.body); // Log the request body
+
+    const orderId = req.params.id; // Get orderId from URL parameters
+    const { status, message, deliveryDate } = req.body; // Get status, message, and deliveryDate from the request body
+
+    if (!orderId || !status) {
+        return res.status(400).json({ message: 'Order ID and status are required.' });
+    }
+
+    ordermodel.updateOne({ _id: orderId }, { $set: { order_status: status, message, deliveryDate } })
+        .then(result => {
+            if (result.nModified === 0) {
+                return res.status(404).json({ message: 'Order not found or no changes made' });
+            }
+            res.json({ status: 'updated' });
+        })
+        .catch(error => {
+            console.error("Mongoose error:", error);
+            res.status(500).json({ message: 'Error updating order', error });
+        });
+});
+
+
+
 
 app.listen(8080, () => {
 
